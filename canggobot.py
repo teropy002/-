@@ -53,12 +53,12 @@ async def cmd_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
         files = [row[0] for row in cursor.fetchall()]
         
         if not files:
-            await update.message.reply_text("📄 列表为空。")
+            await update.message.reply_text("📄 목록이 비어 있습니다.")
             return
         
         # 파일명 HTML 이스케이프 처리 (특수문자 오류 방지)
         file_list_text = "\n".join([f"• {html.escape(f)}" for f in files])
-        msg_text = f"📄 <b>当前文件列表</b>：\n\n{file_list_text}"
+        msg_text = f"📄 <b>현재 파일 목록</b>:\n\n{file_list_text}"
         
         sent_msg = await context.bot.send_message(
             chat_id=update.effective_chat.id, 
@@ -74,7 +74,7 @@ async def cmd_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
     except Exception as e:
         logger.error(f"cmd_post 오류: {e}")
-        await update.message.reply_text(f"❌ 发生错误: {e}")
+        await update.message.reply_text(f"❌ 오류 발생: {e}")
 
 async def doc_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """파일 감지 및 저장"""
@@ -85,15 +85,40 @@ async def doc_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cursor.execute("INSERT INTO file_list (name) VALUES (?)", (file_name,))
             conn.commit()
             logger.info(f"저장 성공: {file_name}")
-            await update.message.reply_text(f"✅ 保存成功：{html.escape(file_name)}", parse_mode="HTML")
+            await update.message.reply_text(f"✅ <b>저장 성공</b>: {html.escape(file_name)}", parse_mode="HTML")
         except sqlite3.IntegrityError:
-            await update.message.reply_text(f"⚠️ 已在列表中：{html.escape(file_name)}", parse_mode="HTML")
+            # 중복 발생 시 알림
+            await update.message.reply_text(f"⚠️ <b>파일 중복</b>: 이미 목록에 있는 파일입니다.\n이름: {html.escape(file_name)}", parse_mode="HTML")
         except Exception as e:
             logger.error(f"doc_handler 오류: {e}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id == SUPREME_ADMIN:
-        await update.message.reply_text("机器人正常运行中。")
+        await update.message.reply_text(
+            f"🤖 <b>봇이 실행 중입니다</b>\n"
+            f"데이터베이스: <code>{DB_FILE}</code>\n\n"
+            f"<b>사용 설명:</b>\n"
+            f"1. 파일을 직접 전송하거나 전달(Forward)하면 자동으로 등록됩니다.\n"
+            f"2. /post 명령어로 현재 목록을 확인하고 고정할 수 있습니다.\n"
+            f"3. /add [파일명] 명령어로 수동 등록이 가능합니다.",
+            parse_mode="HTML"
+        )
+
+@restricted
+async def cmd_add_manual(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """수동으로 파일 이름 추가"""
+    if not context.args:
+        await update.message.reply_text("💡 사용 방법: /add [파일명]")
+        return
+    
+    file_name = " ".join(context.args)
+    try:
+        cursor.execute("INSERT INTO file_list (name) VALUES (?)", (file_name,))
+        conn.commit()
+        await update.message.reply_text(f"✅ <b>수동 추가 성공</b>: {html.escape(file_name)}", parse_mode="HTML")
+    except sqlite3.IntegrityError:
+        # 중복 발생 시 알림
+        await update.message.reply_text(f"⚠️ <b>추가 실패</b>: 이미 존재하는 파일명입니다.\n이름: {html.escape(file_name)}", parse_mode="HTML")
 
 # --- 메인 실행 ---
 if __name__ == '__main__':
@@ -104,6 +129,7 @@ if __name__ == '__main__':
 
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("post", cmd_post))
+        app.add_handler(CommandHandler("add", cmd_add_manual))
         app.add_handler(MessageHandler(filters.Document.ALL, doc_handler))
 
         logger.info("봇이 시작되었습니다.")
