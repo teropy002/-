@@ -7,8 +7,8 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # --- 설정 ---
-TOKEN = "8946741707:AAE9LwctN8adJpiQsf0cvxJ71iXvqzvvXnY" # 봇 토큰 입력
-SUPREME_ADMIN = 6860788088  # 본인 ID
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") 
+SUPREME_ADMIN = int(os.environ.get("SUPREME_ADMIN"))
 DB_FILE = "files.db"
 
 # --- 데이터베이스 초기화 ---
