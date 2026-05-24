@@ -141,12 +141,16 @@ if __name__ == '__main__':
     else:
         app = Application.builder().token(TOKEN).build()
 
+        # 명령어 등록
         app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("ping", cmd_ping))  # 핑 명령어 등록
         app.add_handler(CommandHandler("list", cmd_post))
         app.add_handler(CommandHandler("add", cmd_add_manual))
-        # 문서 핸들러
+        
+        # 문서(파일) 핸들러
         app.add_handler(MessageHandler(filters.Document.ALL, doc_handler))
-        # 일반 메시지 로그용 (필요 시 삭제)
+        
+        # 일반 메시지 디버그 핸들러
         app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), debug_handler))
 
         logger.info("봇이 시작되었습니다.")
